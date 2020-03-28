@@ -1,0 +1,123 @@
+#! /usr/bin/env python3
+"""
+pngs2pdf: A command-line tool to quickly merge multiple pngs into a single pdf.
+
+Example:
+########################################
+$ python ../pypng-converter/pngs2pdf.py
+
+Since no pngs have been provided, we will merge all pngs in this directory (/Users/lexgallon/Desktop/Monash/ENG1060/Labs/testpngconverter).
+
+Found the following pngs in this directory:
+    0: lab2_teamtasks.png
+    1: lab2_teamtasks2.png
+
+Are you sure you would like to continue?
+Y/N: y
+
+Ok, about to merge all pngs in this directory.
+
+Converted all pngs into separate pdfs. Now merging into single pdf...
+
+Done! See 6c3460d7-7dc4-4bce-a611-993cf800f329.pdf.
+########################################
+
+Requires:
+- ImageMagick (convert)
+- Ghostscript
+"""
+import argparse
+import pathlib
+import subprocess
+import random
+import os
+import sys
+import uuid
+
+def convert_pngs(pngs_args):
+    '''Converts list of pngs to separate pdfs using ImageMagick convert.'''
+    if len(pngs_args) == 0:
+        print(f'\nSince no pngs have been provided, searching in this directory:\n{os.getcwd()}')
+        
+        # Getting list of pngs in this directory
+        p = pathlib.Path('.')
+        pngs = [str(png) for png in p.glob('*.png')]
+
+        # Checking that there are indeed pngs in this directory
+        if len(pngs) == 0:
+            print('\nNo pngs found. Exiting...')
+            sys.exit(0)
+        else:
+            print('\nFound the following pngs in this directory:')
+            for i, png in enumerate(pngs):
+                print(f'    {i}: {png}')
+        
+        # Making sure user is happy merging ALL pngs in their directory
+        get_confirmation()
+    else:
+        pngs = pngs_args
+
+    print('\nMerging ' + ' '.join(pngs) + '...')
+
+    # Getting list of pdfs we will create
+    pdfs = [f'{png}.pdf' for png in pngs]
+
+    # Using ImageMagick to convert all pngs into separate pdfs
+    for png, pdf in zip(pngs, pdfs):
+        individual_pdf = f'{png}.pdf'
+        subprocess.run(['/usr/local/bin/convert', png, individual_pdf])
+
+    return pdfs
+
+def merge_pdfs(pdfs, output_pdf=None):
+    '''
+    Merges given list of pdfs and merges them into one, returning the name 
+    of this output.
+    '''
+    if output_pdf is None:
+        output_pdf = str(uuid.uuid4()) + '.pdf'
+
+    base_command = ['/usr/local/bin/gs', '-dBATCH', '-dNOPAUSE', '-q',
+        '-sDEVICE=pdfwrite', f'-sOutputFile={output_pdf}']
+
+    subprocess.run(base_command + pdfs)
+    return output_pdf
+
+def cleanup(pdfs):
+    '''Deletes given list of pdfs.'''
+    for pdf in pdfs:
+        os.remove(pdf)
+
+
+def get_confirmation():
+    '''Waits for user input on whether they would like to merge ALL pngs in 
+    this current directory. Will exit script if desired, otherwise does nothing.'''
+
+    while True:
+        wants_to_continue = input('\nAre you sure you would like to merge ALL of the above pngs?\nY/N: ')
+        if wants_to_continue in ('N', 'n', 'no', 'No'):
+            print('\nBye!')
+            sys.exit(0)
+        elif wants_to_continue in ('Y', 'y', 'yes', 'Yes'):
+            return
+        else:
+            print("\nSorry, I didn't understand that.")
+
+def main():
+    parser = argparse.ArgumentParser(description='Convert a list of pngs into a single pdf.')
+    parser.add_argument('pngs', metavar='PNG', nargs='*', help='2 or more pngs to merge')
+    parser.add_argument('--output', '-o', metavar='Output', type=str,
+        help='A destination filepath for the pdf output. If not provided, will generate a '
+            + 'randomly-named pdf output in the current working directory.')
+
+    args = parser.parse_args()
+
+    pdfs = convert_pngs(args.pngs)
+    output_pdf = merge_pdfs(pdfs, output_pdf=args.output)
+    cleanup(pdfs)
+
+    print(f'\nDone! See {output_pdf}')
+
+
+if __name__ == "__main__":
+    main()
