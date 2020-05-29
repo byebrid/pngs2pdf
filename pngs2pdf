@@ -34,14 +34,23 @@ import os
 import sys
 import uuid
 
-def convert_pngs(pngs_args):
-    '''Converts list of pngs to separate pdfs using ImageMagick convert.'''
+def convert_pngs(pngs_args, sort):
+    '''Converts list of pngs to separate pdfs using ImageMagick convert.
+    
+    Parameters
+    ----------
+    pngs_args: iterable of filepaths
+        List of png files you wish to merge.
+    sort: bool
+        Whether to sort the png files alphanumerically.
+    '''
     if len(pngs_args) == 0:
         print(f'\nSince no pngs have been provided, searching in this directory:\n{os.getcwd()}')
         
         # Getting list of pngs in this directory
         p = pathlib.Path('.')
         pngs = [str(png) for png in p.glob('*.png')]
+        if sort: pngs = sorted(pngs)
 
         # Checking that there are indeed pngs in this directory
         if len(pngs) == 0:
@@ -73,6 +82,14 @@ def merge_pdfs(pdfs, output_pdf=None):
     '''
     Merges given list of pdfs and merges them into one, returning the name 
     of this output.
+
+    Parameters
+    ----------
+    pdfs: iterable of filepath strings
+        Represent list of PDFs created from pngs which we need to merge.
+    output_pdf: filepath
+        Filepath of output PDF. If set to None (as default), then creates 
+        random filename and places in current directory.
     '''
     if output_pdf is None:
         output_pdf = str(uuid.uuid4()) + '.pdf'
@@ -87,7 +104,6 @@ def cleanup(pdfs):
     '''Deletes given list of pdfs.'''
     for pdf in pdfs:
         os.remove(pdf)
-
 
 def get_confirmation():
     '''Waits for user input on whether they would like to merge ALL pngs in 
@@ -109,15 +125,19 @@ def main():
     parser.add_argument('--output', '-o', metavar='Output', type=str,
         help='A destination filepath for the pdf output. If not provided, will generate a '
             + 'randomly-named pdf output in the current working directory.')
+    parser.add_argument('--sort', '-s', action='store_true',
+        help='Whether you would like to sort the files alphanumerically. Note, '
+            + 'if you have numbered your files make sure they are zero-padded '
+            ' as required.')
 
     args = parser.parse_args()
 
-    pdfs = convert_pngs(args.pngs)
-    output_pdf = merge_pdfs(pdfs, output_pdf=args.output)
+    pdfs = convert_pngs(args.pngs, sort=args.sort)
+    output_pdf = merge_pdfs(pdfs, output_pdf=args.output, sort=args.sort)
     cleanup(pdfs)
 
     print(f'\nDone! See {output_pdf}')
 
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     main()
